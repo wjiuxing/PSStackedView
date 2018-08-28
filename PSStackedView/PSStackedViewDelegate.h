@@ -27,6 +27,18 @@
 /// viewController has been removed
 - (void)stackedView:(PSStackedViewController *)stackedView didRemoveViewController:(UIViewController *)viewController;
 
+/// stackcontroller will pop off view controllers because of drag to right
+- (void)stackedView:(PSStackedViewController*)stackedView WillPopViewControllers:(NSArray*)controllers;
+
+/// stackcontroller will no longer pop off view controllers because of drag to right
+- (void)stackedView:(PSStackedViewController *)stackedView WillNotPopViewControllers:(NSArray*)controllers;
+
+/// stackcontroller did start dragging stack
+- (void)stackedViewDidStartDragging:(PSStackedViewController*)stackedView;
+
+/// stackcontroller did stop dragging stack
+- (void)stackedViewDidStopDragging:(PSStackedViewController*)stackedView;
+
 /// viewController has been panned
 - (void)stackedView:(PSStackedViewController *)stackedView didPanViewController:(UIViewController *)viewController byOffset:(NSInteger)offset;
 

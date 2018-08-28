@@ -27,6 +27,10 @@
     ExampleMenuRootController *menuController = [[ExampleMenuRootController alloc] init];
     self.stackController = [[PSStackedViewController alloc] initWithRootViewController:menuController];
 
+    self.stackController.enablePopOffOnDragRight = YES;
+    self.stackController.popOffType = SVPopOptionAllButFirst;
+    self.stackController.delegate = menuController;
+    
     // test to disable large inset
     //self.stackController.largeLeftInset = self.stackController.leftInset;
 

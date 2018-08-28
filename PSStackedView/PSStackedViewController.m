@@ -20,6 +20,7 @@
 #define kPSSVAssociatedBaseViewControllerKey @"kPSSVAssociatedBaseViewController"
 #define kPSSVOverlapMinimalValueToApplyDarkRatio 0.05
 #define kPSSVStackWantsFull @"kPSSVAssociatedStackViewControllerWantsFull"
+#define kPSSVDefaultPopOffDragDistance 150
 
 // reduces alpha over overlapped view controllers. 1.f would totally black-out on complete overlay
 #define kAlphaReductRatio 10.f
@@ -37,11 +38,18 @@ typedef void(^PSSVSimpleBlock)(void);
     BOOL lastDragDividedOne_;
     NSInteger lastVisibleIndexBeforeRotation_;   
     BOOL enableBounces_;
+    BOOL enablePopOffOnDragRight_;
+    PSSVPopOption popOffType_;
+    NSInteger popOffDragDistance_;
     struct {
         unsigned int delegateWillInsertViewController:1;
         unsigned int delegateDidInsertViewController:1;
         unsigned int delegateWillRemoveViewController:1;
         unsigned int delegateDidRemoveViewController:1;
+        unsigned int delegateDidStartDragging:1;
+        unsigned int delegateDidStopDragging:1;
+        unsigned int delegateWillPopViewControllers:1;
+        unsigned int delegateWillNotPopViewControllers:1;
         unsigned int delegateDidPanViewController:1;
         unsigned int delegateDidAlign:1;
     }delegateFlags_;
@@ -71,6 +79,9 @@ typedef void(^PSSVSimpleBlock)(void);
 @synthesize defaultShadowAlpha  = defaultShadowAlpha_;
 @synthesize cornerRadius = cornerRadius_;
 @synthesize numberOfTouches = numberOfTouches_;
+@synthesize enablePopOffOnDragRight = enablePopOffOnDragRight_;
+@synthesize popOffType = popOffType_;
+@synthesize popOffDragDistance = popOffDragDistance_;
 @dynamic firstVisibleIndex;
 @synthesize disablePartialFloat = _disablePartialFloat;
 @synthesize enablePopOverlapedViewOnTap = enablePopOverlapedViewOnTap_;
@@ -109,6 +120,7 @@ typedef void(^PSSVSimpleBlock)(void);
     // set some reasonble defaults
     leftInset_ = 60;
     largeLeftInset_ = 200;
+    popOffDragDistance_ = kPSSVDefaultPopOffDragDistance;
     
     [self configureGestureRecognizer];
     
@@ -202,7 +214,10 @@ typedef void(^PSSVSimpleBlock)(void);
         delegateFlags_.delegateDidRemoveViewController = [delegate respondsToSelector:@selector(stackedView:didRemoveViewController:)];
         delegateFlags_.delegateDidPanViewController = [delegate respondsToSelector:@selector(stackedView:didPanViewController:byOffset:)];
         delegateFlags_.delegateDidAlign = [delegate respondsToSelector:@selector(stackedViewDidAlign:)];
-
+        delegateFlags_.delegateDidStartDragging = [delegate respondsToSelector:@selector(stackedViewDidStartDragging:)];
+        delegateFlags_.delegateDidStopDragging = [delegate respondsToSelector:@selector(stackedViewDidStopDragging:)];
+        delegateFlags_.delegateWillPopViewControllers = [delegate respondsToSelector:@selector(stackedView:WillPopViewControllers:)];
+        delegateFlags_.delegateWillNotPopViewControllers = [delegate respondsToSelector:@selector(stackedView:WillNotPopViewControllers:)];
     }
 }
 
@@ -922,6 +937,10 @@ enum {
     
     // set up designated drag destination
     if (state == UIGestureRecognizerStateBegan) {
+        if (delegateFlags_.delegateDidStartDragging) {
+            [delegate_ stackedViewDidStartDragging:self];
+        }
+        
 	    lastDragOption_ = [self snapOptionFromOffset:offset];
     }else {
 	    if (lastDragOption_ == SVSnapOptionUndecided) {
@@ -939,6 +958,44 @@ enum {
         lastDragOffset_ = translatedPoint.x;
     }
     
+    if(self.enablePopOffOnDragRight && [viewControllers_ count] > 0) {
+        UIViewController* fvc = (UIViewController*)[viewControllers_ objectAtIndex:0];
+        NSInteger currentDragDistance = (fvc.containerView.left - largeLeftInset_);
+        
+        if(currentDragDistance > popOffDragDistance_ && lastDragOption_ != SVSnapOptionPopRight) {
+            lastDragOption_ = SVSnapOptionPopRight;
+            if(delegateFlags_.delegateWillPopViewControllers) {
+                NSArray* toPop;
+                if(self.popOffType == SVPopOptionAll) {
+                    toPop = [self.viewControllers copy];
+                }
+                else if(self.popOffType == SVPopOptionAllButFirst) {
+                    toPop = [self.viewControllers subarrayWithRange:NSMakeRange(1, [self.viewControllers count] - 1)];
+                }
+                else if(self.popOffType == SVPopOptionTop) {
+                    toPop = [self.viewControllers subarrayWithRange:NSMakeRange([self.viewControllers count] - 1, 1)];
+                }
+                [delegate_ stackedView:self WillPopViewControllers:toPop];
+            }
+        }
+        else if(currentDragDistance < popOffDragDistance_ && lastDragOption_ == SVSnapOptionPopRight) {
+            lastDragOption_ = SVSnapOptionNearest;
+            if(delegateFlags_.delegateWillNotPopViewControllers) {
+                NSArray* toPop;
+                if(self.popOffType == SVPopOptionAll) {
+                    toPop = [self.viewControllers copy];
+                }
+                else if(self.popOffType == SVPopOptionAllButFirst) {
+                    toPop = [self.viewControllers subarrayWithRange:NSMakeRange(1, [self.viewControllers count] - 1)];
+                }
+                else if(self.popOffType == SVPopOptionTop) {
+                    toPop = [self.viewControllers subarrayWithRange:NSMakeRange([self.viewControllers count] - 1, 1)];
+                }
+                [delegate_ stackedView:self WillNotPopViewControllers:toPop];
+            }
+        }
+    }
+    
     // perform snapping after gesture ended
     BOOL gestureEnded = state == UIGestureRecognizerStateEnded;
     if (gestureEnded) {
@@ -951,13 +1008,30 @@ enum {
             if (_disablePartialFloat) {
                 self.floatIndex = floorf(self.floatIndex);
             }
-        }else if(lastDragOption_ == SVSnapOptionLeft) {
+        } else if (lastDragOption_ == SVSnapOptionLeft) {
             self.floatIndex = [self nearestValidFloatIndex:self.floatIndex round:PSSVRoundUp];
-        }else {
+        } else if (lastDragOption_ == SVSnapOptionPopRight) {
+            self.floatIndex = 0.0;
+            if (self.popOffType == SVPopOptionAll) {
+                [self popToRootViewControllerAnimated:YES];
+            } else if (self.popOffType == SVPopOptionAllButFirst) {
+                [self popToViewController:[self.viewControllers objectAtIndex:0] animated:YES];
+            } else if (self.popOffType == SVPopOptionTop) {
+                if ([self.viewControllers count] == 1) {
+                    [self popToRootViewControllerAnimated:YES];
+                } else {
+                    [self popToViewController:[self.viewControllers objectAtIndex:[self.viewControllers count]-2] animated:YES];
+                }
+            }
+        } else {
             self.floatIndex = [self nearestValidFloatIndex:self.floatIndex round:PSSVRoundNearest];
         }
         
         [self alignStackAnimated:YES];
+        
+        if (delegateFlags_.delegateDidStopDragging) {
+            [delegate_ stackedViewDidStopDragging:self];
+        }
     }
 }
 

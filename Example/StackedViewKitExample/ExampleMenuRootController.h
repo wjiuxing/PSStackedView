@@ -8,9 +8,11 @@
 
 #import <UIKit/UIKit.h>
 
-@interface ExampleMenuRootController : UIViewController <UITableViewDataSource, UITableViewDelegate> {
+@interface ExampleMenuRootController : UIViewController <UITableViewDataSource, UITableViewDelegate, PSStackedViewDelegate> {
     UITableView *menuTable_;
     NSArray *cellContents_;
+    UIImageView *popIconLeft_;
+    UIImageView *popIconRight_;
 }
 
 @end

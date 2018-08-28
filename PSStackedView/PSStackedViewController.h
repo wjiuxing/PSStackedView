@@ -15,8 +15,15 @@ enum {
     SVSnapOptionUndecided,
     SVSnapOptionNearest,
     SVSnapOptionLeft,
-    SVSnapOptionRight
+    SVSnapOptionRight,
+    SVSnapOptionPopRight
 } typedef PSSVSnapOption;
+
+enum {
+    SVPopOptionAllButFirst,
+    SVPopOptionAll,
+    SVPopOptionTop
+} typedef PSSVPopOption;
 
 /// StackController hosing a backside rootViewController and the stacked controllers
 @interface PSStackedViewController : UIViewController
@@ -144,6 +151,15 @@ enum {
 
 ///number of touches
 @property(nonatomic, assign) NSUInteger numberOfTouches;
+
+/// Property to enable poping off all of the stack views except the first when dragged past a specified amount
+@property(nonatomic, assign) BOOL enablePopOffOnDragRight;
+
+/// Property to determine the type of pop off action that will be taken when entire stack is dragged to the right
+@property(nonatomic, assign) PSSVPopOption popOffType;
+
+/// Property to determine the distance the stack has to be dragged to the right to trigger popOff
+@property(nonatomic, assign) NSInteger popOffDragDistance;
 
 /// left inset thats always visible. Defaults to 60.
 @property(nonatomic, assign) NSUInteger leftInset;
