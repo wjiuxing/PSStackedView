@@ -23,6 +23,10 @@
 /// returns the stack controller if the viewController is embedded
 - (PSStackedViewController *)stackController;
 
+- (void)maximizeStackViewAtIndex:(NSInteger)indexNumber;
+
+- (void)minimizeStackViewAtIndex:(NSInteger)indexNumber;
+
 - (BOOL)panEnabled;
 - (void)setPanEnabled:(BOOL)panEnabled;
 
