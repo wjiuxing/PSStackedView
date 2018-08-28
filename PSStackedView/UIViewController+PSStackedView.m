@@ -57,7 +57,7 @@
 
 //this method will expand the view to full size
 //gesture are lost to prevent scrolling
-- (void) maximizeStackViewAtIndex:(NSInteger)indexNumber
+- (void)maximizeStackViewAtIndex:(NSInteger)indexNumber
 {
     UIView *stacksRootView = self.view.window.subviews[0];
     UIView *stackAtIndexView = stacksRootView.subviews[indexNumber + 1]; //Adds 1 for the menu view
@@ -105,7 +105,7 @@
 //this method will move the view back to the stack
 //in case of rotation we jump to the indexNumber
 //rotation are restured
-- (void) minimizeStackViewAtIndex:(NSInteger)indexNumber
+- (void)minimizeStackViewAtIndex:(NSInteger)indexNumber
 {
     UIView *stacksRootView = self.view.window.subviews[0];
     UIView *controllerView = stacksRootView.subviews[indexNumber+1];
